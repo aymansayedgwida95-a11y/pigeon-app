@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#00b4d8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>إدارة الحمام</title>
+
+<!-- Cordova -->
+<script src="cordova.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<!-- Font -->
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f5f5f5;
+  --card:#ffffff;
+  --card2:#f0f0f0;
+  --accent:#f5a623;
+  --blue:#00b4d8;
+  --text:#1a1a1a;
+  --muted:#888;
+  --green:#2ecc71;
+  --red:#e74c3c;
+  --border:#e0e0e0;
+  --orange:#f5a623;
+}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;position:relative}
+html, body { height: 100%; width: 100%; }
+
+/* TOPBAR */
+.topbar{background:var(--blue);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,180,216,0.3)}
+.topbar-title{font-size:18px;font-weight:700;color:#fff}
+.topbar-icons{display:flex;gap:12px}
+.topbar-icons button{background:none;border:none;color:#fff;font-size:20px;cursor:pointer}
+
+/* OVERLAY & SIDEBAR */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200}
+.overlay.open{display:block}
+.sidebar{position:fixed;top:0;right:-280px;width:280px;height:100%;background:#fff;z-index:300;transition:right 0.3s ease;display:flex;flex-direction:column;overflow-y:auto;box-shadow:-4px 0 20px rgba(0,0,0,0.1)}
+.sidebar.open{right:0}
+.sidebar-header{background:linear-gradient(135deg,#0077b6,#00b4d8);padding:50px 20px 24px;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.sidebar-avatar{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:30px}
+.sidebar-email{font-size:13px;color:rgba(255,255,255,0.8)}
+.sidebar-nav{padding:12px 0;flex:1}
+.sidebar-item{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;cursor:pointer;transition:background 0.2s;border-right:3px solid transparent}
+.sidebar-item:hover{background:rgba(255,255,255,0.05)}
+.sidebar-item.active{background:rgba(0,180,216,0.1);border-right-color:var(--blue)}
+.sidebar-item-left{display:flex;align-items:center;gap:12px}
+.sidebar-item span{font-size:15px;font-weight:500}
+.sidebar-item .icon{font-size:20px;width:28px;text-align:center}
+
+/* PAGES */
+.page{display:none;padding:16px 16px 100px;animation:fadeIn 0.2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* DASHBOARD */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.stat-card{background:var(--card);border-radius:14px;padding:16px;text-align:center;border:1px solid var(--border)}
+.stat-label{font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500}
+.stat-num{font-size:28px;font-weight:900;color:var(--accent)}
+
+.section-header{font-size:16px;font-weight:700;margin-bottom:12px;padding-right:4px;border-right:3px solid var(--blue);padding-right:10px}
+
+.nest-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+.nest-table th{background:var(--card2);padding:10px 12px;font-size:13px;color:var(--muted);font-weight:600;text-align:center}
+.nest-table td{padding:12px;font-size:14px;text-align:center;border-top:1px solid var(--border)}
+
+/* COUPLES PAGE */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px;color:var(--muted)}
+.empty-icon{font-size:64px;opacity:0.3}
+
+.couple-card{background:var(--card);border-radius:16px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden;cursor:pointer;transition:border-color 0.2s}
+.couple-card:active{border-color:var(--accent)}
+.couple-card-header{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.nest-badge{background:var(--accent);color:#000;font-weight:800;font-size:13px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.couple-names{flex:1}
+.couple-name{font-size:15px;font-weight:700}
+.couple-type{font-size:12px;color:var(--muted);margin-top:2px}
+.couple-status{display:flex;align-items:center;gap:6px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.couple-card-body{background:var(--card2);padding:10px 16px;display:flex;gap:16px;font-size:12px;color:var(--muted)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:20px 16px 40px}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
+.modal-title{font-size:20px;font-weight:800;margin-bottom:20px;text-align:center}
+.modal-save-btn{width:100%;background:var(--accent);color:#000;border:none;border-radius:16px;padding:16px;font-family:'Tajawal',sans-serif;font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;box-shadow:0 4px 20px rgba(245,166,35,0.3)}
+
+.input-group{margin-bottom:10px}
+.input-field{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:15px;outline:none;transition:border-color 0.2s}
+.input-field:focus{border-color:var(--blue)}
+
+.radio-group{display:flex;gap:8px;margin-bottom:16px}
+.radio-opt{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.2s}
+.radio-opt.selected{background:rgba(245,166,35,0.15);border-color:var(--accent);color:var(--accent)}
+
+/* FAB */
+.fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:100%;padding:0 16px;pointer-events:none;z-index:90}
+.fab-btn{pointer-events:all;background:var(--accent);color:#000;border:none;border-radius:30px;padding:14px 28px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(245,166,35,0.4);transition:transform 0.2s,box-shadow 0.2s;margin:0 auto}
+.fab-btn:active{transform:scale(0.96);box-shadow:0 2px 10px rgba(245,166,35,0.3)}
+
+.search-wrap{padding:0 0 12px}
+.search-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px}
+.search-box input{background:none;border:none;outline:none;color:var(--text);font-family:'Tajawal',sans-serif;font-size:15px;flex:1}
+
+.settings-section-title{font-size:13px;color:var(--muted);font-weight:700;padding:16px 4px 8px;letter-spacing:0.5px}
+.settings-group{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:4px}
+.settings-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.settings-item:last-child{border-bottom:none}
+
+.toggle{width:44px;height:26px;background:var(--border);border-radius:13px;position:relative;cursor:pointer;transition:background 0.3s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform 0.3s;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.toggle.on::after{transform:translateX(-18px)}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-icons">
+    <button onclick="openSidebar()">☰</button>
+    <button>⋮</button>
+  </div>
+  <div class="topbar-title" id="topbar-title">لوحة المعلومات</div>
+</div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-avatar">🕊️</div>
+    <div class="sidebar-email" id="sidebar-user-name">الغاوي</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="sidebar-item active" onclick="goPage('dashboard',this,'لوحة المعلومات')">
+      <div class="sidebar-item-left"><span class="icon">▦</span><span>لوحة المعلومات</span></div>
+    </div>
+    <div class="sidebar-item" onclick="goPage('couples',this,'الأزواج')">
+      <div class="sidebar-item-left"><span class="icon">⊞</span><span>الأزواج</span></div>
+    </div>
+    <div class="sidebar-item" onclick="goPage('hatch',this,'متابعة التفريخ')">
+      <div class="sidebar-item-left"><span class="icon">📋</span><span>متابعة التفريخ</span></div>
+    </div>
+    <div class="sidebar-item" onclick="goPage('tasks',this,'المهام')">
+      <div class="sidebar-item-left"><span class="icon">✏️</span><span>المهام</span></div>
+    </div>
+    <div class="sidebar-item" onclick="goPage('settings',this,'الإعدادات')">
+      <div class="sidebar-item-left"><span class="icon">⚙️</span><span>الإعدادات</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE: DASHBOARD ===== -->
+<div class="page active" id="page-dashboard">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">عدد الأزواج</div>
+      <div class="stat-num" id="stat-couples">0</div>
+      <div class="stat-label">أزواج</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">عدد الحمام</div>
+      <div class="stat-num" id="stat-pigeons">0</div>
+      <div class="stat-label">حمام</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">البيض المفقوس</div>
+      <div class="stat-num" id="stat-eggs">0</div>
+      <div class="stat-label">بيضة</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">نسبة النجاح</div>
+      <div class="stat-num" id="stat-rate">-</div>
+      <div class="stat-label">نسبة</div>
+    </div>
+  </div>
+
+  <div class="section-header">إحصائيات الأعشاش</div>
+  <table class="nest-table">
+    <thead>
+      <tr>
+        <th>رقم العش</th>
+        <th>البيض المفقوس</th>
+        <th>نسبة النجاح</th>
+      </tr>
+    </thead>
+    <tbody id="nest-stats-body">
+      <tr><td colspan="3" style="color:var(--muted);padding:20px">لا توجد بيانات</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== PAGE: COUPLES ===== -->
+<div class="page" id="page-couples">
+  <div id="couples-empty" class="empty-state">
+    <div class="empty-icon">🕊️</div>
+    <div class="empty-text">لا يوجد أزواج</div>
+  </div>
+  <div id="couples-list" style="display:none"></div>
+  <div style="height:80px"></div>
+</div>
+
+<!-- ===== PAGE: HATCH ===== -->
+<div class="page" id="page-hatch">
+  <div class="search-wrap">
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" placeholder="بحث..." oninput="filterHatch(this.value)">
+    </div>
+  </div>
+  <div id="hatch-list"></div>
+  <div id="hatch-empty" class="empty-state" style="display:none">
+    <div class="empty-icon">🥚</div>
+    <div class="empty-text">لا توجد تفريخات</div>
+  </div>
+  <div style="height:80px"></div>
+</div>
+
+<!-- ===== PAGE: TASKS ===== -->
+<div class="page" id="page-tasks">
+  <div id="tasks-list"></div>
+  <div id="tasks-empty" class="empty-state">
+    <div class="empty-icon">✅</div>
+    <div class="empty-text">لا توجد مهام</div>
+  </div>
+  <div style="height:80px"></div>
+</div>
+
+<!-- ===== PAGE: SETTINGS ===== -->
+<div class="page" id="page-settings">
+  <div class="settings-section-title">حسابى</div>
+  <div class="settings-group">
+    <div class="settings-item">
+      <span style="font-size:14px">تشغيل الوضع الليلي</span>
+      <div class="toggle" id="tog-dark" onclick="toggleSetting('dark')"></div>
+    </div>
+    <div class="settings-item" onclick="alert('تسجيل الخروج')">
+      <span style="font-size:14px">تسجيل الخروج</span>
+    </div>
+  </div>
+  <div style="height:40px"></div>
+</div>
+
+<!-- ADD COUPLE MODAL -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">إضافة زوج جديد</div>
+
+    <div class="input-group">
+      <input class="input-field" type="text" id="inp-nest" placeholder="رقم العش">
+    </div>
+
+    <div class="input-group">
+      <input class="input-field" type="text" id="inp-type" placeholder="نوع الزوج">
+    </div>
+
+    <div class="input-group">
+      <input class="input-field" type="text" id="inp-father-color" placeholder="لون الأب">
+    </div>
+
+    <div class="input-group">
+      <input class="input-field" type="text" id="inp-mother-color" placeholder="لون الأم">
+    </div>
+
+    <button class="modal-save-btn" onclick="saveCouple()">
+      <span>💾</span><span>حفظ الزوج</span>
+    </button>
+    <button onclick="closeModal()" style="width:100%;background:none;border:none;color:var(--muted);font-family:'Tajawal',sans-serif;font-size:15px;padding:12px;cursor:pointer;margin-top:8px">إلغاء</button>
+  </div>
+</div>
+
+<!-- ADD TASK MODAL -->
+<div class="modal-overlay" id="modal-task">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">إضافة مهمة</div>
+    <div class="input-group">
+      <input class="input-field" type="text" id="inp-task-name" placeholder="اسم المهمة">
+    </div>
+    <div class="input-group">
+      <input class="input-field" type="date" id="inp-task-date">
+    </div>
+    <button class="modal-save-btn" onclick="saveTask()"><span>✅</span><span>حفظ المهمة</span></button>
+    <button onclick="closeModal()" style="width:100%;background:none;border:none;color:var(--muted);font-family:'Tajawal',sans-serif;font-size:15px;padding:12px;cursor:pointer;margin-top:8px">إلغاء</button>
+  </div>
+</div>
+
+<!-- FAB -->
+<div class="fab" id="fab">
+  <button class="fab-btn" onclick="showAddModal()">
+    <span style="font-size:20px">+</span>
+    <span id="fab-label">أضف زوج</span>
+  </button>
+</div>
+
+<script>
+// ===== DATA =====
+let couples = JSON.parse(localStorage.getItem('couples')||'[]');
+let tasks = JSON.parse(localStorage.getItem('tasks')||'[]');
+let currentPage = 'dashboard';
+
+function save(){
+  localStorage.setItem('couples',JSON.stringify(couples));
+  localStorage.setItem('tasks',JSON.stringify(tasks));
+}
+
+// ===== SIDEBAR =====
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function goPage(id,el,title){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent=title;
+  currentPage=id;
+  closeSidebar();
+  updateFAB(id);
+  if(id==='dashboard') renderDashboard();
+  if(id==='couples') renderCouples();
+  if(id==='hatch') renderHatch();
+  if(id==='tasks') renderTasks();
+}
+
+function updateFAB(page){
+  const fab=document.getElementById('fab');
+  const label=document.getElementById('fab-label');
+  if(['couples','hatch'].includes(page)){fab.style.display='block';label.textContent='أضف زوج';}
+  else if(page==='tasks'){fab.style.display='block';label.textContent='أضف مهمة';}
+  else{fab.style.display='none';}
+}
+
+// ===== DASHBOARD =====
+function renderDashboard(){
+  const totalHatched = couples.reduce((a,c)=>a+(c.hatchedEggs||0),0);
+  const totalActive = couples.reduce((a,c)=>a+(c.activeEggs||0),0);
+  const totalPairs = couples.length;
+  const rate = totalActive>0 ? Math.round((totalHatched/totalActive)*100)+'%' : '-';
+  document.getElementById('stat-couples').textContent=totalPairs;
+  document.getElementById('stat-pigeons').textContent=totalPairs*2;
+  document.getElementById('stat-eggs').textContent=totalHatched;
+  document.getElementById('stat-rate').textContent=rate;
+
+  const tbody=document.getElementById('nest-stats-body');
+  if(couples.length===0){tbody.innerHTML='<tr><td colspan="3" style="color:var(--muted);padding:20px">لا توجد بيانات</td></tr>';return;}
+  tbody.innerHTML=couples.map(c=>`
+    <tr>
+      <td>${c.nest||'-'}</td>
+      <td>${c.hatchedEggs||0}</td>
+      <td style="color:var(--green);font-weight:700">${c.activeEggs>0?Math.round(((c.hatchedEggs||0)/c.activeEggs)*100)+'%':'-'}</td>
+    </tr>
+  `).join('');
+}
+
+// ===== COUPLES =====
+function renderCouples(){
+  const el=document.getElementById('couples-list');
+  const empty=document.getElementById('couples-empty');
+  if(couples.length===0){el.style.display='none';empty.style.display='flex';return;}
+  empty.style.display='none';el.style.display='block';
+  el.innerHTML=couples.map((c,i)=>`
+    <div class="couple-card">
+      <div class="couple-card-header">
+        <div class="nest-badge">${c.nest||i+1}</div>
+        <div class="couple-names">
+          <div class="couple-name">${c.type||'زوج '+(i+1)}</div>
+        </div>
+        <div class="couple-status">
+          <div class="status-dot"></div>
+        </div>
+      </div>
+      <div class="couple-card-body">
+        <span>🥚 ${c.activeEggs||0} بيض</span>
+        <span>✅ ${c.hatchedEggs||0} مفقوس</span>
+      </div>
+    </div>`).join('');
+}
+
+// ===== HATCH =====
+function renderHatch(filter=''){
+  const list=document.getElementById('hatch-list');
+  const empty=document.getElementById('hatch-empty');
+  const filtered=couples.filter(c=>!filter||c.type?.includes(filter)||c.nest?.includes(filter));
+  if(filtered.length===0){list.innerHTML='';empty.style.display='flex';return;}
+  empty.style.display='none';
+  list.innerHTML=filtered.map((c,i)=>`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:17px;font-weight:700">${c.type||'زوج'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">العش: ${c.nest||'-'}</div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-size:11px;color:var(--muted)">بيض نشط</div>
+          <div style="font-size:20px;font-weight:900;color:var(--accent)">${c.activeEggs||0}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function filterHatch(v){renderHatch(v);}
+
+// ===== TASKS =====
+function renderTasks(){
+  const list=document.getElementById('tasks-list');
+  const empty=document.getElementById('tasks-empty');
+  if(tasks.length===0){list.innerHTML='';empty.style.display='flex';return;}
+  empty.style.display='none';
+  list.innerHTML=tasks.map((t,i)=>`
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${i})" style="width:20px;height:20px;cursor:pointer">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;${t.done?'text-decoration:line-through;color:var(--muted);':''}">${t.name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${t.date||''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleTask(i){tasks[i].done=!tasks[i].done;save();renderTasks();}
+
+// ===== MODALS =====
+function showAddModal(){
+  if(currentPage==='tasks'){
+    document.getElementById('modal-task').classList.add('open');
+  } else {
+    document.getElementById('modal-add').classList.add('open');
+  }
+}
+
+function closeModal(){
+  document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));
+}
+
+function saveCouple(){
+  const nest=document.getElementById('inp-nest').value.trim();
+  const type=document.getElementById('inp-type').value.trim();
+  const fatherColor=document.getElementById('inp-father-color').value.trim();
+  const motherColor=document.getElementById('inp-mother-color').value.trim();
+  if(!nest&&!type){alert('يرجى إدخال البيانات');return;}
+  couples.push({nest,type,fatherColor,motherColor,activeEggs:0,hatchedEggs:0});
+  save();closeModal();
+  renderCouples();renderDashboard();
+  ['inp-nest','inp-type','inp-father-color','inp-mother-color'].forEach(id=>document.getElementById(id).value='');
+}
+
+function saveTask(){
+  const name=document.getElementById('inp-task-name').value.trim();
+  const date=document.getElementById('inp-task-date').value;
+  if(!name){alert('يرجى إدخال اسم المهمة');return;}
+  tasks.push({name,date,done:false});
+  save();closeModal();renderTasks();
+  document.getElementById('inp-task-name').value='';
+}
+
+function toggleSetting(key){
+  console.log('Setting toggled:', key);
+}
+
+// INIT
+document.addEventListener('deviceready', function(){
+  console.log('Cordova Ready!');
+  renderDashboard();
+  updateFAB('dashboard');
+}, false);
+
+// Fallback for web testing
+if(document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function(){
+    renderDashboard();
+    updateFAB('dashboard');
+  });
+} else {
+  renderDashboard();
+  updateFAB('dashboard');
+}
+</script>
+
+</body>
+</html>
